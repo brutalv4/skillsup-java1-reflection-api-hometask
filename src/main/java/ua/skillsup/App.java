@@ -21,6 +21,6 @@ public class App {
 
 
         JsonProcessorService service = new JsonProcessorService();
-        service.printJson(service.toJson(human));
+        System.out.println(service.toJson(human));
     }
 }

@@ -16,8 +16,4 @@ public class JsonProcessorService {
         return decoder.fromJson(json, clazz);
     }
 
-    public void printJson(String json) {
-        System.out.println(json);
-    }
-
 }
