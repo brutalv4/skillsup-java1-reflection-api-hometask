@@ -4,7 +4,6 @@ import ua.skillsup.annotation.CustomDateFormat;
 import ua.skillsup.annotation.JsonValue;
 
 import java.time.LocalDate;
-import java.util.Calendar;
 
 public class Human {
     private String firstName;

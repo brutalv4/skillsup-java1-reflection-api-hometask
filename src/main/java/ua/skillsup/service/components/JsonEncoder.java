@@ -6,136 +6,103 @@ import ua.skillsup.annotation.JsonValue;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 public class JsonEncoder {
     public String toJson(Object o) {
-        StringBuilder builder = new StringBuilder();
-
-        if (o != null) {
-            builder.append(processObject(o));
-        }
-
-        return builder.toString();
+        return o != null ? processObject(o, new StringBuilder()) : "";
     }
 
-    private String processObject(Object o) {
-        StringBuilder builder = new StringBuilder();
+    private String processObject(Object o, StringBuilder builder) {
         builder.append("{");
 
-        Class<?> clazz = o.getClass();
-        boolean isFieldProcessed = false;
-        for (Field field : clazz.getDeclaredFields()) {
-            if (isFieldProcessed) {
+        boolean fieldProcessed = false;
+        for (Field field : o.getClass().getDeclaredFields()) {
+            if (fieldProcessed) {
                 builder.append(",");
-                isFieldProcessed = false;
             }
 
-            String nameField = proccessFieldName(field);
-
-            String valueField;
-            try {
-                valueField = processFieldValue(field, o);
-            } catch (IllegalAccessException e) {
-                valueField = "UNKNOWN";
-            }
-
-            if (!valueField.isEmpty()) {
-                builder
-                        .append("\"")
-                        .append(nameField)
-                        .append("\":")
-                        .append(valueField)
-                ;
-
-                isFieldProcessed = true;
-            }
-
+            fieldProcessed = appendField(o, field, builder);
         }
 
         builder.append("}");
         return builder.toString();
     }
 
-    private String proccessFieldName(Field field) {
-        String fieldName;
+    private boolean appendField(Object o, Field field, StringBuilder builder) {
+        boolean fieldProcessed = false;
 
-        if (field.isAnnotationPresent(JsonValue.class)) {
-            fieldName = field.getAnnotation(JsonValue.class).name();
-        } else {
-            fieldName = field.getName();
-        }
-
-        return fieldName;
-    }
-
-    private String processFieldValue(Field field, Object o) throws IllegalAccessException {
-        Object result;
-
-        StringBuilder builder = new StringBuilder();
-
-        boolean isAccessModified = false;
-        if (!field.isAccessible()) {
+        boolean isAccessModified = !field.isAccessible();
+        if (isAccessModified) {
             field.setAccessible(true);
-            isAccessModified = true;
         }
 
-        result = field.get(o);
+        Object result;
+        try {
+            result = field.get(o);
+        } catch (IllegalAccessException e) {
+            result = "UNKNOWN";
+        }
 
         if (isAccessModified) {
             field.setAccessible(false);
         }
 
         if (result != null) {
-            Class<?> fieldType = field.getType();
-            if (fieldType.isArray()) {
-                // Array
-                builder.append(processArray(result));
-            } else if (fieldType.isAssignableFrom(Number.class)) {
-                // Number
-                builder.append(result);
-            } else if (fieldType.equals(String.class)) {
-                // String
-                builder.append("\"");
-                builder.append(result);
-                builder.append("\"");
-            } else if (fieldType.isAssignableFrom(LocalDate.class)) {
-                // LocalDate
-                String dateformat = null;
-                if (field.isAnnotationPresent(CustomDateFormat.class)) {
-                    dateformat = field.getAnnotation(CustomDateFormat.class).format();
-                }
-
-                builder.append(processLocalDate((LocalDate) result, dateformat));
-            } else if (!fieldType.isPrimitive()) {
-                // Objects
-                builder.append(processObject(result));
-            } else {
-                // Everything else?
-                builder.append(result);
-            }
+            appendFieldName(field, builder);
+            appendFieldValue(result, field, builder);
+            fieldProcessed = true;
         }
 
-        return builder.toString();
+        return fieldProcessed;
     }
 
-    private String processLocalDate(LocalDate date, String dateFormat) {
-        String result;
-        if (dateFormat != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateFormat);
-            result = formatter.format(date);
+    private void appendFieldValue(Object result, Field field, StringBuilder builder) {
+        Class<?> fieldType = field.getType();
+        if (fieldType.isArray()) {
+            // Array
+            appendArray(result, builder);
+        } else if (fieldType.equals(String.class)) {
+            // String
+            builder.append("\"")
+                    .append(result)
+                    .append("\"");
+        } else if (fieldType.isAssignableFrom(LocalDate.class)) {
+            // LocalDate
+            Optional<String> dateformat =
+                    field.isAnnotationPresent(CustomDateFormat.class) ?
+                            Optional.of(field.getAnnotation(CustomDateFormat.class).format()) :
+                            Optional.empty();
+
+            appendLocalDate((LocalDate) result, dateformat, builder);
+        } else if (!fieldType.isPrimitive()) {
+            // Objects
+            processObject(result, builder);
         } else {
-            result = date.toString();
+            // Everything else?
+            builder.append(result);
         }
-
-        return result;
     }
 
-    private String processArray(Object o) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("[");
-        builder.append("some array processing");
-        builder.append("]");
-        return builder.toString();
+    private void appendFieldName(Field field, StringBuilder builder) {
+        builder.append("\"")
+                .append(
+                        field.isAnnotationPresent(JsonValue.class) ?
+                                field.getAnnotation(JsonValue.class).name() :
+                                field.getName())
+                .append("\":");
+    }
+
+    private void appendLocalDate(LocalDate date, Optional<String> dateFormat, StringBuilder builder) {
+        builder.append(
+                dateFormat.map(s -> DateTimeFormatter.ofPattern(s).format(date)).orElseGet(date::toString)
+        );
+    }
+
+    private void appendArray(Object o, StringBuilder builder) {
+        builder.append("[")
+                .append("some array processing")
+                .append("]");
     }
 
 

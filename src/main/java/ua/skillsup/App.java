@@ -11,7 +11,7 @@ public class App {
 
     public static void main(String[] args) {
 
-        Human human = new Human("Vladimir", "Bredihin",
+        Human human = new Human("Vladimir", "Bredikhin",
                 "Programming", LocalDate.of(1985, Month.FEBRUARY, 5));
 
         Gson gson = new Gson();
